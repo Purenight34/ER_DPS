@@ -35,6 +35,7 @@ $commonArguments = @(
     'c++', '-std=c++20', '-Wall', '-Wextra', '-Wpedantic',
     '-fno-fast-math', '-ffp-contract=off',
     '-I', (Join-Path $repoRoot 'combat\include'),
+    '-I', (Join-Path $repoRoot 'catalog\include'),
     '-I', (Join-Path $repoRoot 'cli\include')
 )
 
@@ -60,14 +61,26 @@ try {
     [System.Environment]::SetEnvironmentVariable('ZIG_LOCAL_CACHE_DIR', $localCache, 'Process')
     Push-Location -LiteralPath $buildRoot
     try {
+        $namedCliSources = @(
+            'combat\src\calculator.cpp', 'catalog\src\catalog.cpp', 'catalog\src\loadout.cpp',
+            'cli\src\scenario_io.cpp', 'cli\src\named_cli.cpp')
         Build-Executable -Name 'er_calc.exe' -Sources @(
-            'combat\src\calculator.cpp', 'cli\src\scenario_io.cpp', 'cli\src\main.cpp')
+            $namedCliSources + 'cli\src\main.cpp')
         Build-Executable -Name 'core_tests.exe' -Sources @(
             'combat\src\calculator.cpp', 'tests\core_tests.cpp')
         Build-Executable -Name 'io_tests.exe' -Sources @(
             'combat\src\calculator.cpp', 'cli\src\scenario_io.cpp', 'tests\io_tests.cpp')
+        Build-Executable -Name 'catalog_tests.exe' -Sources @(
+            'catalog\src\catalog.cpp', 'tests\catalog_tests.cpp')
+        Build-Executable -Name 'loadout_tests.exe' -Sources @(
+            'combat\src\calculator.cpp', 'catalog\src\catalog.cpp', 'catalog\src\loadout.cpp',
+            'tests\loadout_tests.cpp')
+        Build-Executable -Name 'named_cli_tests.exe' -Sources @(
+            $namedCliSources + 'tests\named_cli_tests.cpp')
 
-        foreach ($testName in @('core_tests.exe', 'io_tests.exe')) {
+        foreach ($testName in @(
+            'core_tests.exe', 'io_tests.exe', 'catalog_tests.exe', 'loadout_tests.exe',
+            'named_cli_tests.exe')) {
             Write-Host "Running $testName"
             & (Join-Path $buildRoot $testName)
             if ($LASTEXITCODE -ne 0) {
@@ -84,7 +97,7 @@ try {
             throw 'CLI smoke test returned empty JSON output.'
         }
         $smokeOutput -join "`n" | ConvertFrom-Json -ErrorAction Stop | Out-Null
-        Write-Host 'Build and all three offline tests passed.'
+        Write-Host 'Build and all six offline tests passed.'
     }
     finally {
         Pop-Location

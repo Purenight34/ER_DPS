@@ -51,8 +51,11 @@ struct Scenario {
     Combatant attacker;
     Combatant defender;
     double attack_speed{}; // Explicit final attacks/second, not a growth formula.
+    bool attack_speed_known{true}; // False permits single-hit experiments only.
     double critical_chance{}; // Fraction [0, 1], not a percentage.
+    bool critical_chance_known{true};
     double critical_multiplier{}; // Explicit final multiplier, not bonus damage.
+    bool critical_multiplier_known{true};
     std::string amplification_level_source; // Explicit level basis, never inferred.
     int amplification_levels{}; // Number of level increments to apply.
     double amplification_per_level{}; // Fraction: 0.02 means 2% per level.
@@ -120,6 +123,7 @@ struct Result {
 // A fresh, isolated runtime is used for each invocation. Throws invalid_argument
 // for unsupported rules or invalid/incomplete input, and overflow_error for
 // non-finite derived values. No HTTP, files, UI, RNG, or LLM dependencies.
+PermanentStats calculate_permanent_stats(const Combatant& combatant);
 Result simulate(const Scenario& scenario);
 
 } // namespace er

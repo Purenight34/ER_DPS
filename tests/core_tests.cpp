@@ -132,6 +132,23 @@ int main() {
         near(shield.health_damage, 0, "fully shielded hit");
         near(shield.remaining_hp, 60, "shield protects bookkeeping hp");
 
+        s = fixture();
+        s.attacks.resize(1);
+        s.attack_speed_known = false;
+        s.attack_speed = 0;
+        near(er::simulate(s).total_damage, 60, "single-hit experiment needs no invented attack speed");
+        s.attacks.push_back({"aa-next", 1000, true, false, std::nullopt});
+        rejects([&] { (void)er::simulate(s); }, "unknown attack speed cannot validate a multi-attack combo");
+        s = fixture();
+        s.attacks.resize(1);
+        s.critical_chance_known = false;
+        s.critical_multiplier_known = false;
+        s.critical_chance = 0;
+        s.critical_multiplier = 0;
+        near(er::simulate(s).total_damage, 60, "observed normal hit needs no invented critical stats");
+        s.attacks[0].critical = true;
+        rejects([&] { (void)er::simulate(s); }, "critical damage requires a known multiplier");
+
         auto bad = [&](auto mutate, const char* name) {
             auto input = fixture(); mutate(input);
             rejects([&] { (void)er::simulate(input); }, name);

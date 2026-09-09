@@ -303,6 +303,12 @@ Scenario read_scenario(std::istream& input) {
             } else if (const auto field = setters.find(key); field != setters.end()) {
                 if (!seen.insert(key).second) throw std::invalid_argument("duplicate key: " + key);
                 field->second(value);
+            } else if (key == "attack_speed_known" || key == "critical_chance_known" || key == "critical_multiplier_known") {
+                if (!seen.insert(key).second) throw std::invalid_argument("duplicate key: " + key);
+                if (value != "true" && value != "false") throw std::invalid_argument("expected true or false");
+                if (key == "attack_speed_known") scenario.attack_speed_known = value == "true";
+                if (key == "critical_chance_known") scenario.critical_chance_known = value == "true";
+                if (key == "critical_multiplier_known") scenario.critical_multiplier_known = value == "true";
             } else {
                 throw std::invalid_argument("unknown key: " + key);
             }
@@ -339,8 +345,11 @@ void write_text(std::ostream& out, const Scenario& scenario, const Result& resul
     text_combatant(out, "attacker", scenario.attacker);
     text_combatant(out, "defender", scenario.defender);
     out << "attack_speed=" << scenario.attack_speed << '\n'
+        << "attack_speed_known=" << (scenario.attack_speed_known ? "true" : "false") << '\n'
         << "critical_chance=" << scenario.critical_chance << '\n'
+        << "critical_chance_known=" << (scenario.critical_chance_known ? "true" : "false") << '\n'
         << "critical_multiplier=" << scenario.critical_multiplier << '\n'
+        << "critical_multiplier_known=" << (scenario.critical_multiplier_known ? "true" : "false") << '\n'
         << "amplification_level_source=" << scenario.amplification_level_source << '\n'
         << "amplification_levels=" << scenario.amplification_levels << '\n'
         << "amplification_per_level=" << scenario.amplification_per_level << '\n'
@@ -407,8 +416,11 @@ void write_json(std::ostream& out, const Scenario& scenario, const Result& resul
     out << ",\"defender\":";
     json_combatant(out, scenario.defender);
     out << ",\"attack_speed\":" << scenario.attack_speed
+        << ",\"attack_speed_known\":" << (scenario.attack_speed_known ? "true" : "false")
         << ",\"critical_chance\":" << scenario.critical_chance
+        << ",\"critical_chance_known\":" << (scenario.critical_chance_known ? "true" : "false")
         << ",\"critical_multiplier\":" << scenario.critical_multiplier
+        << ",\"critical_multiplier_known\":" << (scenario.critical_multiplier_known ? "true" : "false")
         << ",\"amplification_level_source\":" << quoted(scenario.amplification_level_source)
         << ",\"amplification_levels\":" << scenario.amplification_levels
         << ",\"amplification_per_level\":" << scenario.amplification_per_level

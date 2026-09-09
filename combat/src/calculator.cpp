@@ -73,6 +73,10 @@ Comparison compare(double calculated, double observed) {
 }
 } // namespace
 
+PermanentStats calculate_permanent_stats(const Combatant& combatant) {
+    return permanent(combatant, "combatant");
+}
+
 Result simulate(const Scenario& s) {
     text_required(s.id, "id");
     text_required(s.patch_version, "patch_version");
@@ -89,12 +93,18 @@ Result simulate(const Scenario& s) {
     require(s.amplification_levels >= 0, "amplification_levels must be nonnegative");
     nonnegative(s.amplification_per_level, "amplification_per_level");
     finite_input(s.attack_speed, "attack_speed");
-    require(s.attack_speed > 0, "attack_speed must be positive final attacks/second");
+    if (s.attack_speed_known) {
+        require(s.attack_speed > 0, "attack_speed must be positive final attacks/second");
+    } else {
+        require(s.attacks.size() == 1,
+                "Final attack_speed is required to validate multiple basic attacks");
+    }
     finite_input(s.critical_chance, "critical_chance");
-    require(s.critical_chance >= 0 && s.critical_chance <= 1,
+    require(!s.critical_chance_known || (s.critical_chance >= 0 && s.critical_chance <= 1),
             "critical_chance must be a fraction in [0, 1]");
     finite_input(s.critical_multiplier, "critical_multiplier");
-    require(s.critical_multiplier >= 1, "critical_multiplier must be the final multiplier >= 1");
+    require(!s.critical_multiplier_known || s.critical_multiplier >= 1,
+            "critical_multiplier must be the final multiplier >= 1");
     nonnegative(s.initial_hp, "initial_hp");
     nonnegative(s.initial_shield, "initial_shield");
     require(s.duration_ms > 0, "duration_ms must be positive");
@@ -120,9 +130,11 @@ Result simulate(const Scenario& s) {
                 attack.id + ": time_ms must be inside [0, duration_ms)");
         if (attack.observed_damage) nonnegative(*attack.observed_damage, attack.id + ".observed_damage");
         if (attack.hit) {
-            require(!(attack.critical && s.critical_chance == 0),
+            require(!attack.critical || s.critical_multiplier_known,
+                    attack.id + ": final critical multiplier is required for a critical hit");
+            require(!(s.critical_chance_known && attack.critical && s.critical_chance == 0),
                     attack.id + ": critical hit is impossible with critical_chance=0");
-            require(!(!attack.critical && s.critical_chance == 1),
+            require(!(s.critical_chance_known && !attack.critical && s.critical_chance == 1),
                     attack.id + ": normal hit is impossible with critical_chance=1");
         }
     }
@@ -185,6 +197,12 @@ Result simulate(const Scenario& s) {
     };
     if (out.measured_count < out.impacts.size()) {
         out.warnings.push_back("Incomplete measurements: comparison totals cover measured impacts only.");
+    }
+    if (!s.attack_speed_known) {
+        out.warnings.push_back("Final attack speed is not supplied; a single hit has no inter-attack interval to validate.");
+    }
+    if (!s.critical_chance_known || !s.critical_multiplier_known) {
+        out.warnings.push_back("Missing critical stats are marked unknown; no critical probability or multiplier was invented.");
     }
     return out;
 }

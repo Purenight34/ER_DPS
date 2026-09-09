@@ -95,6 +95,20 @@ int main() {
         rejects(replace_once(valid, "attack_speed=1", "attack_speed=1e9999"), "numeric overflow");
         rejects(replace_once(valid, "duration_ms=4000", "duration_ms=4.0"), "integer time required");
         rejects(replace_once(valid, "unsupported_effects=false", "unsupported_effects=0"), "strict boolean");
+        rejects(valid + "attack_speed_known=maybe\n", "strict optional known flag");
+        rejects(valid + "critical_chance_known=false\ncritical_chance_known=true\n", "duplicate optional known flag");
+        {
+            std::istringstream optional_flags(valid + "attack_speed_known=false\ncritical_chance_known=false\ncritical_multiplier_known=false\n");
+            const auto unknown = er::read_scenario(optional_flags);
+            check(!unknown.attack_speed_known && !unknown.critical_chance_known && !unknown.critical_multiplier_known,
+                  "optional known flags survive parsing");
+            check(scenario.attack_speed_known && scenario.critical_chance_known && scenario.critical_multiplier_known,
+                  "legacy numeric inputs remain known by default");
+            std::ostringstream unknown_json;
+            er::write_json(unknown_json, unknown, er::Result{});
+            check(unknown_json.str().find("\"critical_multiplier_known\":false") != std::string::npos,
+                  "JSON distinguishes absent critical multiplier from a numerical zero");
+        }
         rejects(replace_once(valid, "attack=a1,0,hit,normal,60", "attack=a1,0,hit,normal,60,extra"), "extra attack field");
         rejects(replace_once(valid, "attack=a1,0,hit,normal,60", "attack=a1,0,maybe,normal,60"), "unknown hit state");
         rejects(replace_once(valid, "attack=a1,0,hit,normal,60", "attack=a1,0,hit,random,60"), "unknown critical state");
